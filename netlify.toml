@@ -1,0 +1,20 @@
+# netlify.toml
+
+# Base build settings (applies to the frontend)
+[build]
+  base    = "client/"          # Base directory: Where package.json lives
+  publish = "client/dist/"     # Publish directory: Vite output directory
+  command = "npm run build"    # Build command
+
+# Functions settings
+[functions]
+  directory = "netlify/functions/" # Path to your Netlify Functions directory
+  # Specifies that Node.js runtime should bundle dependencies from the root package.json
+  node_bundler = "esbuild" # Use esbuild for faster builds
+
+# Redirects and Rewrites
+# Make the noaa-pfds function available at /api/noaa-pfds
+[[redirects]]
+  from = "/api/*"                # Match requests starting with /api/
+  to = "/.netlify/functions/:splat" # Map to the corresponding function
+  status = 200                   # Respond with 200 status (rewrite, not redirect) 
