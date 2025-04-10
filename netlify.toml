@@ -8,8 +8,8 @@
 
 # Functions settings
 [functions]
-  # Workaround: Use relative path from base directory due to build log interpretation
-  directory = "../netlify/functions/" 
+  # Path should be relative to repository root
+  directory = "netlify/functions/" 
   # Specifies that Node.js runtime should bundle dependencies from the root package.json
   node_bundler = "esbuild" # Use esbuild for faster builds
 
