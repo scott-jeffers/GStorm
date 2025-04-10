@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import InputForm from './components/InputForm'; // Import the form component
 import { tr55Distributions, calculateHyetograph, linearInterpolate, CalculationInputs } from './utils/tr55';
 import { CalculationResult, StormStep, StormInputParameters, NoaaState, NoaaReturnPeriodData } from './types';
