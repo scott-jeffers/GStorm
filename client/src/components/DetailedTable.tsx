@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalculationResult, StormStep, StormInputParameters } from '../types';
+import { CalculationResult, StormInputParameters } from '../types';
 
 interface DetailedTableProps {
     calculationResult: CalculationResult | null;

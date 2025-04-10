@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
-import L, { LatLngExpression, Map as LeafletMap } from 'leaflet';
+import L, { LatLngExpression } from 'leaflet';
 
 // Fix Leaflet's default icon path issue with bundlers like Vite/Webpack
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';

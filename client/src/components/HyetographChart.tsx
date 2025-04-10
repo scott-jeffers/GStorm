@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { CalculationResult, StormStep } from '../types'; // Use shared types
+import { CalculationResult } from '../types'; // Use shared types
 
 ChartJS.register(
   CategoryScale,

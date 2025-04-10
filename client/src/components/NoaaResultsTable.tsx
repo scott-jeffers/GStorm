@@ -1,5 +1,5 @@
 import React from 'react';
-import { NoaaState, NoaaDataPoint } from '../types';
+import { NoaaState } from '../types';
 
 interface NoaaResultsTableProps {
     noaaState: NoaaState;

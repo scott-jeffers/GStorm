@@ -204,8 +204,6 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
         const intensityInchesPerHour = stepDurationHours > 0 ? depthStepInches / stepDurationHours : 0;
 
         // Determine units for output
-        const finalIntensityUnit = isMetric ? 'mm/hr' : 'in/hr';
-        const finalDepthUnit = isMetric ? 'mm' : 'in';
         const conversionFactor = isMetric ? INCH_TO_MM : 1;
 
         const finalIntensity = intensityInchesPerHour * conversionFactor;

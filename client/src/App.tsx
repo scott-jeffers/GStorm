@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import InputForm from './components/InputForm'; // Import the form component
-import { tr55Distributions, calculateHyetograph, linearInterpolate, CalculationInputs } from './utils/tr55';
-import { CalculationResult, StormStep, StormInputParameters, NoaaState, NoaaReturnPeriodData } from './types';
+import { calculateHyetograph, CalculationInputs } from './utils/tr55';
+import { CalculationResult, StormInputParameters, NoaaState } from './types';
 import HyetographChart from './components/HyetographChart'; // Import the chart
 import SummaryTable from './components/SummaryTable'; // Import SummaryTable
 import DetailedTable from './components/DetailedTable'; // Import DetailedTable

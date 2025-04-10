@@ -1,4 +1,4 @@
-import { NoaaReturnPeriodData, NoaaDataPoint } from '../types';
+import { NoaaReturnPeriodData } from '../types';
 
 /**
  * Parses the CSV text response from the NOAA PFDS endpoint.
