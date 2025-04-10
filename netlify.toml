@@ -3,7 +3,7 @@
 # Base build settings (applies to the frontend)
 [build]
   base    = "client/"          # Base directory: Where package.json lives
-  publish = "client/dist/"     # Publish directory: Vite output directory
+  publish = "dist/"            # Publish directory relative to base directory (client/dist)
   command = "npm run build"    # Build command
 
 # Functions settings
