@@ -1,10 +1,10 @@
 # netlify.toml
 
-# Base build settings (applies to the frontend)
+# Build settings (run from root)
 [build]
-  base    = "client/"          # Base directory: Where package.json lives
-  publish = "dist/"            # Publish directory relative to base directory (client/dist)
-  command = "npm run build"    # Build command
+  # base    = "client/"          # Removed base directory setting
+  publish = "client/dist/"     # Publish directory relative to root
+  command = "npm run build --workspace=client"    # Build client workspace from root
 
 # Functions settings
 [functions]
