@@ -6,7 +6,7 @@ import HyetographChart from './components/HyetographChart'; // Import the chart
 import SummaryTable from './components/SummaryTable'; // Import SummaryTable
 import DetailedTable from './components/DetailedTable'; // Import DetailedTable
 import NoaaMap from './components/NoaaMap'; // Import the map
-import NoaaResultsTable from './components/NoaaResultsTable'; // Import the table
+import NoaaDataTable from './components/NoaaDataTable'; // Import the new table
 import L from 'leaflet'; // Import Leaflet library for LatLng type
 import { parseNoaaCsv } from './utils/noaaParser'; // Import the parser
 
@@ -280,30 +280,27 @@ function App() {
           </section>
 
           {/* --- NOAA Section --- */}
-          <section className="bg-white p-4 rounded-lg shadow border border-gray-200">
-             <h2 className="text-xl font-semibold text-blue-600 border-b border-gray-300 pb-1 mb-4">
-              NOAA Atlas 14 Lookup
+          <section id="noaa-section" className="bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col">
+            <h2 className="text-xl font-semibold text-blue-600 border-b border-gray-300 pb-1 mb-4">
+              NOAA Atlas 14 Data
             </h2>
-             {/* --- NOAA Map --- */}
-            <NoaaMap
-                 selectedLatLon={noaaState.latitude && noaaState.longitude ? new L.LatLng(noaaState.latitude, noaaState.longitude) : null}
-                 onMapClick={handleMapClick}
-                 statusMessage={noaaState.statusMessage}
-             />
-
-             {/* Loading/Error messages handled here or could be inside table */}
-             {noaaState.isLoading && <p className="text-blue-500 font-semibold mt-2">Loading...</p>}
-             {noaaState.error && !noaaState.isLoading && <p className="text-red-500 font-semibold mt-2">Error: {noaaState.error}</p>}
-
-            {/* --- NOAA Results Table --- */}
-            {/* Render table only when not loading and data exists or no specific error shown */}
-             {!noaaState.isLoading && (
-                 <NoaaResultsTable
-                    noaaState={noaaState}
-                    onApplyData={applyNoaaDataToInputs}
+            {/* Map takes up less space initially */}
+            <div className="h-64 mb-4 border rounded-lg overflow-hidden shadow-inner">
+                 <NoaaMap
+                    onMapClick={handleMapClick}
+                    initialCenter={noaaState.latitude && noaaState.longitude ? [noaaState.latitude, noaaState.longitude] : undefined}
+                    selectedLatLon={noaaState.latitude && noaaState.longitude ? L.latLng(noaaState.latitude, noaaState.longitude) : null}
+                    statusMessage={noaaState.statusMessage}
                  />
-             )}
-
+            </div>
+             {/* --- Display NOAA Results Table --- */}
+            <NoaaDataTable
+                noaaData={noaaState.data}
+                isLoading={noaaState.isLoading}
+                error={noaaState.error}
+                statusMessage={noaaState.statusMessage}
+                onSelectEvent={applyNoaaDataToInputs} // Pass the existing function
+            />
           </section>
         </div>
 
