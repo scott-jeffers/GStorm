@@ -34,15 +34,14 @@ const NoaaResultsTable: React.FC<NoaaResultsTableProps> = ({ noaaState, onApplyD
         return acc;
     }, [] as string[]);
 
-    // Sort duration labels based on a predefined order for consistent columns
-     const durationOrder = ["5-min", "15-min", "60-min", "2-hr", "3-hr", "6-hr", "12-hr", "24-hr", "2-day", "4-day", "7-day", "10-day"];
-     allDurationLabels.sort((a, b) => {
-         const indexA = durationOrder.indexOf(a);
-         const indexB = durationOrder.indexOf(b);
-         if (indexA === -1 && indexB === -1) return a.localeCompare(b); // Fallback sort if not in predefined order
-         if (indexA === -1) return 1;
-         if (indexB === -1) return -1;
-         return indexA - indexB;
+    // Filter and Sort duration labels based on a predefined order for consistent columns
+    const allowedDurations = ["6-hr", "12-hr", "24-hr"];
+    const displayDurationLabels = allDurationLabels
+        .filter(label => allowedDurations.includes(label))
+        .sort((a, b) => {
+            const indexA = allowedDurations.indexOf(a);
+            const indexB = allowedDurations.indexOf(b);
+            return indexA - indexB;
      });
 
     return (
@@ -53,7 +52,7 @@ const NoaaResultsTable: React.FC<NoaaResultsTableProps> = ({ noaaState, onApplyD
                         <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-600 uppercase tracking-wider">
                             Return Period (yr)
                         </th>
-                        {allDurationLabels.map(label => (
+                        {displayDurationLabels.map(label => (
                             <th key={label} scope="col" className="px-2 py-1.5 text-center font-medium text-gray-600 uppercase tracking-wider">
                                 {label} Depth (in)
                             </th>
@@ -66,13 +65,15 @@ const NoaaResultsTable: React.FC<NoaaResultsTableProps> = ({ noaaState, onApplyD
                             <td className="px-2 py-1 whitespace-nowrap font-medium text-gray-800">
                                 {rpData.returnPeriod}-yr
                             </td>
-                            {allDurationLabels.map(label => {
+                            {displayDurationLabels.map(label => {
                                 const dataPoint = rpData.dataPoints.find(dp => dp.durationLabel === label);
+                                // Extract numeric duration for onApplyData
+                                const durationValue = parseInt(label.replace('-hr',''), 10);
                                 return (
                                     <td key={`${rpData.returnPeriod}-${label}`} className="px-2 py-1 whitespace-nowrap text-center text-gray-700">
                                         {dataPoint ? (
                                             <button
-                                                onClick={() => onApplyData(dataPoint.depth, dataPoint.durationValue, dataPoint.durationUnits)}
+                                                onClick={() => onApplyData(dataPoint.depth, durationValue, dataPoint.durationUnits)}
                                                 className="px-1.5 py-0.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition duration-150 ease-in-out shadow-sm"
                                                 title={`Apply ${dataPoint.depth.toFixed(3)}" for ${label} duration`}
                                             >

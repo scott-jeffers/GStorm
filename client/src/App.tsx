@@ -35,48 +35,58 @@ function App() {
   const [noaaState, setNoaaState] = useState<NoaaState>(initialNoaaState); // Add NOAA state
 
   // Handler for input changes
-  const handleInputChange = (field: keyof StormInputParameters, value: string | number) => {
+  const handleInputChange = (field: keyof Omit<StormInputParameters, 'durationUnits'>, value: string | number) => {
+    // Log the raw input change
+    console.log(`Input changed: Field=${field}, Value=${value}, Type=${typeof value}`);
+
     setInputs((prev) => {
-        let processedValue: string | number | (6 | 12 | 24) = value;
+        // Process the input value (e.g., parse numbers)
+        let processedValue: string | number = value;
 
-        // Handle string/number based on field
+        // Ensure numeric fields that should be numbers are treated as such
+        // Convert 'totalDepth' and 'timeStep' strings to numbers if they are numeric strings
+        if ((field === 'totalDepth' || field === 'timeStep') && typeof value === 'string') {
+             const num = parseFloat(value);
+             // Keep as string if not a valid number, let validation handle it later
+             processedValue = isNaN(num) ? value : num;
+             console.log(`Processed ${field} from string '${value}' to ${typeof processedValue}: ${processedValue}`);
+        }
+
+        // Special handling for duration - ensure it's one of the allowed numbers
         if (field === 'duration') {
-            const valueStr = typeof value === 'string' ? value : value.toString();
-            const numValue = parseInt(valueStr, 10);
-            if ([6, 12, 24].includes(numValue)) {
-                processedValue = numValue as 6 | 12 | 24;
+            const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+            if (typeof numValue === 'number' && [6, 12, 24].includes(numValue)) {
+                processedValue = numValue as 6 | 12 | 24; // Assign the specific numeric literal type
+                console.log(`Processed duration to number: ${processedValue}`);
             } else {
-                console.warn(`Invalid duration value received: ${value}. Ignoring change.`);
-                return prev;
-            }
-        } else if (field === 'timeStep') {
-            // Ensure timeStep is always a string
-            processedValue = typeof value === 'string' ? value : value.toString();
-        } else if (field === 'totalDepth') {
-             // Ensure totalDepth is always a string
-            processedValue = typeof value === 'string' ? value : value.toString();
-        } else if (field === 'stormType') {
-            // stormType comes from a select, should be string. Use toString() for safety.
-             processedValue = value.toString();
-         } else if (field === 'depthUnits'){
-             // depthUnits comes from radio buttons, should be string. Use toString() for safety.
-             processedValue = value.toString();
+                console.error(`Error processing input for ${field}: Expected 6, 12, or 24 but got ${value}`);
+                // Return previous state ONLY if the current value is invalid for duration
+                 return prev;
+             }
          }
-         // No need for else, other fields (like durationUnits which is removed) aren't handled
 
-        // Ensure type consistency before updating state
-        if ((field === 'timeStep' || field === 'totalDepth' || field === 'stormType' || field === 'depthUnits') && typeof processedValue !== 'string') {
-             console.error(`Error processing input for ${field}: Expected string but got ${typeof processedValue}`);
+        // Basic type validation before setting state (Example for fields expected to be numbers)
+        if (field === 'totalDepth' && typeof processedValue !== 'number' && typeof processedValue !== 'string') { // Allow string for input binding
+             console.error(`Error processing input for ${field}: Expected number or string but got ${typeof processedValue}`);
              return prev; // Prevent updating state with wrong type
         }
-        if (field === 'duration' && typeof processedValue !== 'number') {
-             console.error(`Error processing input for ${field}: Expected number but got ${typeof processedValue}`);
-             return prev; // Prevent updating state with wrong type
+        // The original check for duration is now handled above more specifically
+        // if (field === 'duration' && typeof processedValue !== 'number') {
+        //      console.error(`Error processing input for ${field}: Expected number but got ${typeof processedValue}`);
+        //      return prev; // Prevent updating state with wrong type
+        // }
+        if (field === 'timeStep' && typeof processedValue !== 'number' && typeof processedValue !== 'string') { // Allow string for input binding
+            console.error(`Error processing input for ${field}: Expected number or string but got ${typeof processedValue}`);
+            return prev;
         }
+
+        // For other fields like stormType, just assign the value (assuming string)
+        // Add more specific checks if needed
 
         return {
             ...prev,
-            [field]: processedValue
+            // Use Omit<> keys type safety
+            [field]: processedValue as StormInputParameters[keyof Omit<StormInputParameters, 'durationUnits'>]
         };
     });
   };
@@ -94,9 +104,11 @@ function App() {
   // Function to validate inputs and trigger calculation
   const triggerCalculation = useCallback((currentInputs: StormInputParameters) => {
        // Validate and convert inputs to numbers
-       const depthNum = parseFloat(currentInputs.totalDepth); // Already string
+       // Explicitly convert to string before parsing, as the type could be number | string
+       const depthNum = parseFloat(String(currentInputs.totalDepth));
        // currentInputs.duration is already 6 | 12 | 24
-       const timeStepNum = parseInt(currentInputs.timeStep, 10); // Already string
+       // Explicitly convert to string before parsing
+       const timeStepNum = parseInt(String(currentInputs.timeStep), 10);
 
        if (isNaN(depthNum) || depthNum <= 0 ||
            ![6, 12, 24].includes(currentInputs.duration) ||

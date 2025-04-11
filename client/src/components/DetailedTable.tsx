@@ -18,13 +18,14 @@ function formatTableTime(timeMinutes: number, totalDurationMinutes: number): str
 }
 
 // Helper function to generate SWMM .dat content (Simple H:MM format)
-const generateSwmmDatContent = (result: CalculationResult, inputs: StormInputParameters): string => {
+const generateSwmmDatContent = (result: CalculationResult, inputs: Omit<StormInputParameters, 'durationUnits'>): string => {
     const timeStepMinutes = inputs.timeStep ? parseFloat(String(inputs.timeStep)) : 6; // Default to 6 mins
     const totalDurationMinutes = result.intensityData.length * timeStepMinutes;
 
     // Header comment similar to example
     const depthUnit = inputs.depthUnits === 'us' ? 'in' : 'mm';
-    let datContent = `;${inputs.stormType} ${inputs.duration}${inputs.durationUnits} ${inputs.totalDepth}-${depthUnit} GStorm Hyetograph\n`;
+    // Use hardcoded 'hr' as duration unit is always hours now
+    let datContent = `;${inputs.stormType} ${inputs.duration}hr ${inputs.totalDepth}-${depthUnit} GStorm Hyetograph\\n`;
 
     let currentTotalMinutes = 0;
 
@@ -130,7 +131,8 @@ const DetailedTable: React.FC<DetailedTableProps> = ({ calculationResult, stormI
         // Generate filename
         const stormType = stormInputs.stormType.replace(' ', '');
         const durationValue = String(stormInputs.duration).replace('.', '-');
-        const durationUnitString = stormInputs.durationUnits === 'hours' ? 'hr' : 'min';
+        // Assume duration unit is always 'hr' now
+        const durationUnitString = 'hr';
         const depthValue = String(stormInputs.totalDepth).replace('.', '-');
         const depthUnitString = stormInputs.depthUnits === 'us' ? 'in' : 'mm';
         const filename = `gstorm_hyetograph_${stormType}_${durationValue}${durationUnitString}_${depthValue}${depthUnitString}.csv`;
@@ -142,12 +144,14 @@ const DetailedTable: React.FC<DetailedTableProps> = ({ calculationResult, stormI
     };
 
     const handleDownloadDat = () => {
+        // Pass only the necessary parts of stormInputs, excluding durationUnits
         const datString = generateSwmmDatContent(calculationResult, stormInputs);
         const blob = new Blob([datString], { type: 'text/plain;charset=utf-8' });
 
         // Generate filename
         const depthUnit = stormInputs.depthUnits === 'us' ? 'in' : 'mm';
-        const filename = `GStorm_Hyetograph_${stormInputs.stormType}_${stormInputs.totalDepth}${depthUnit}_${stormInputs.duration}${stormInputs.durationUnits}.dat`;
+        // Use hardcoded 'hr' as duration unit is always hours now
+        const filename = `GStorm_Hyetograph_${stormInputs.stormType}_${stormInputs.totalDepth}${depthUnit}_${stormInputs.duration}hr.dat`;
 
         // Create a link and trigger download
         const link = document.createElement('a');
