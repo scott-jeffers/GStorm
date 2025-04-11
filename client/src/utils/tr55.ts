@@ -114,8 +114,6 @@ function parseDesignStormsCsv(csvString: string): Tr55Distributions {
 
     Object.keys(rawData).forEach(combinedKey => {
         const { time_minutes, intensity_in_hr } = rawData[combinedKey];
-        const durationMatch = combinedKey.match(/(\d+)HR$/);
-        const totalDurationMinutes = durationMatch ? parseInt(durationMatch[1], 10) * 60 : 1440; // Default to 24hr if somehow key is wrong
 
         if (time_minutes.length === 0) {
              console.warn(`No valid time/intensity data points found for ${combinedKey} after parsing.`);
@@ -342,7 +340,6 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
     const baseCumulativeFractions = baseData.cumulative_fraction;
 
     let totalDepthInches = totalDepth / (depthUnit === 'metric' ? INCH_TO_MM : 1);
-    const totalDurationMinutes = durationInput * 60; // Duration is now fixed from input (6, 12, 24 hrs)
 
     // Input Validation (duration is now guaranteed 6, 12, or 24)
     if (isNaN(totalDepth) || isNaN(timeStepMinutes) || totalDepth <= 0 || timeStepMinutes <= 0) {
@@ -355,12 +352,12 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
     let peakIntensity = 0;
     let calculatedTotalDepthInches = 0;
     // Ensure integer number of steps covering the full duration
-    const numSteps = Math.ceil(totalDurationMinutes / timeStepMinutes);
+    const numSteps = Math.ceil(durationInput * 60 / timeStepMinutes);
     // Generate target times from 0 up to and including the final duration step end
-    const targetTimes = Array.from({ length: numSteps + 1 }, (_, i) => Math.min(i * timeStepMinutes, totalDurationMinutes));
+    const targetTimes = Array.from({ length: numSteps + 1 }, (_, i) => Math.min(i * timeStepMinutes, durationInput * 60));
     // Ensure the last time point is exactly the duration
-    if (targetTimes[targetTimes.length - 1] < totalDurationMinutes) {
-        targetTimes.push(totalDurationMinutes);
+    if (targetTimes[targetTimes.length - 1] < durationInput * 60) {
+        targetTimes.push(durationInput * 60);
     }
     // Filter out potential duplicate end time if duration is exact multiple of timestep
     if(targetTimes.length > 1 && targetTimes[targetTimes.length - 1] === targetTimes[targetTimes.length - 2]) {
@@ -414,10 +411,10 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
         });
 
         // Format chart label (using start time of interval)
-        plotLabels.push(formatTimeLabel(startTimeMinutes, totalDurationMinutes));
+        plotLabels.push(formatTimeLabel(startTimeMinutes, durationInput * 60));
     }
     // Add final label for chart axis end
-    plotLabels.push(formatTimeLabel(totalDurationMinutes, totalDurationMinutes));
+    plotLabels.push(formatTimeLabel(durationInput * 60, durationInput * 60));
 
     const finalCalculatedTotalDepth = calculatedTotalDepthInches * (isMetric ? INCH_TO_MM : 1);
 

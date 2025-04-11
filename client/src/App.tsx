@@ -13,7 +13,7 @@ import { parseNoaaCsv } from './utils/noaaParser'; // Import the parser
 // Default input values
 const defaultInputs: StormInputParameters = {
   totalDepth: '1.0',
-  duration: '24',
+  duration: 24,
   stormType: 'Type II',
   timeStep: '6',
   depthUnits: 'us',
@@ -45,39 +45,32 @@ function App() {
       // For now, recalculation happens on submit.
   };
 
-  // Handler for unit radio button changes
-  const handleUnitChange = (unitType: 'depth' | 'duration', value: 'us' | 'metric' | 'hours' | 'minutes') => {
+  // Handler for unit radio button changes - only handles depth now
+  const handleUnitChange = (unitType: 'depth', value: 'us' | 'metric') => {
       if (unitType === 'depth') {
           setInputs((prev: StormInputParameters): StormInputParameters => ({ ...prev, depthUnits: value as 'us' | 'metric' }));
-      } else {
-          setInputs((prev: StormInputParameters): StormInputParameters => ({ ...prev, durationUnits: value as 'hours' | 'minutes' }));
-      }
-      // Trigger recalculation immediately when units change
-      // We need to use the 'updated' state value, which isn't available yet.
-      // Use a callback or useEffect based on inputs to handle this reliably.
-       triggerCalculation(inputs); // Pass current state, but might be stale
-      // TODO: Improve unit change recalculation (e.g., useEffect)
+      } 
+      triggerCalculation(inputs); 
   };
 
   // Function to validate inputs and trigger calculation
   const triggerCalculation = useCallback((currentInputs: StormInputParameters) => {
        // Validate and convert inputs to numbers
        const depthNum = parseFloat(String(currentInputs.totalDepth));
-       const durationNum = parseFloat(String(currentInputs.duration));
        const timeStepNum = parseInt(String(currentInputs.timeStep), 10);
 
        if (isNaN(depthNum) || depthNum <= 0 ||
-           isNaN(durationNum) || durationNum <= 0 ||
+           ![6, 12, 24].includes(currentInputs.duration) || 
            isNaN(timeStepNum) || timeStepNum <= 0) {
            console.error("Invalid input values for calculation.");
-           alert("Please ensure all inputs (Depth, Duration, Time Step) are valid positive numbers.");
+           alert("Please ensure all inputs (Depth, Time Step) are valid positive numbers and Duration is 6, 12, or 24.");
            setCalculationResult(null); // Clear previous results on invalid input
            return;
        }
 
        const calculationParams: CalculationInputs = {
            totalDepthInput: depthNum,
-           durationInput: durationNum,
+           durationInput: currentInputs.duration,
            stormType: currentInputs.stormType,
            timeStepMinutes: timeStepNum,
            depthUnit: currentInputs.depthUnits,
@@ -181,16 +174,23 @@ function App() {
   }, [fetchNoaaData]); // Depend on the memoized fetch function
 
   // --- Apply NOAA Data to Inputs (Placeholder) ---
-  const applyNoaaDataToInputs = useCallback((depth: number, durationValue: number, durationUnits: 'hours' | 'minutes') => {
-        console.log(`Applying NOAA data: Depth=${depth}, Duration=${durationValue} ${durationUnits}`);
+  const applyNoaaDataToInputs = useCallback((depth: number, durationValue: number) => {
+        console.log(`Applying NOAA data: Depth=${depth}, Duration=${durationValue} hours`);
+
+        // Validate durationValue is one of the allowed values
+        if (![6, 12, 24].includes(durationValue)) {
+            console.error(`Invalid duration (${durationValue}) passed from NOAA table. Expected 6, 12, or 24.`);
+            alert(`Error applying NOAA data: Invalid duration (${durationValue} hours)`);
+            return;
+        }
 
         // Create the updated inputs object
         const updatedInputs: StormInputParameters = {
             ...inputs, // Keep other inputs like stormType and timeStep
             totalDepth: depth.toFixed(3), // Update depth
-            duration: durationValue,       // Update duration value
+            duration: durationValue as 6 | 12 | 24, // Update duration value, assert type
             depthUnits: 'us',              // Set depth units to US
-            durationUnits: durationUnits,  // Update duration units
+            durationUnits: 'hours',        // Fixed to hours
         };
 
         setInputs(updatedInputs);
@@ -198,7 +198,7 @@ function App() {
         // Trigger calculation with the *new* inputs state
         triggerCalculation(updatedInputs); // Pass the newly set state
 
-        alert(`Inputs updated: ${depth.toFixed(3)} inches, ${durationValue} ${durationUnits}. Storm recalculated.`);
+        alert(`Inputs updated: ${depth.toFixed(3)} inches, ${durationValue} hours. Storm recalculated.`);
 
         // Optional: Scroll to input form
         // document.getElementById('input-section')?.scrollIntoView({ behavior: 'smooth' });
