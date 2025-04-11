@@ -101,17 +101,14 @@ function parseDesignStormsCsv(csvString: string): Tr55Distributions {
     stormTypes.forEach(type => {
         const times = rawData[type].time_minutes;
         const intensities = rawData[type].intensity_in_hr;
-        const cumulative_depth_inches: number[] = [0]; // Start with 0 depth at time 0 (or first time)
 
         let totalDepthInches = 0;
-        let lastValidTime = 0; // Assume first time is 0 if not present
 
          // Find the first valid time and intensity
          let firstValidIndex = -1;
          for(let k=0; k < times.length; k++){
              if(!isNaN(intensities[k])){
                  firstValidIndex = k;
-                 lastValidTime = times[k]; // Initialize with the first valid time
                  break;
              }
          }
@@ -130,7 +127,6 @@ function parseDesignStormsCsv(csvString: string): Tr55Distributions {
 
          for (let j = 0; j < times.length; j++) { // Iterate through ALL parsed rows
              const currentTime = times[j];
-             const currentIntensity = intensities[j]; // Intensity listed for the time at the *end* of the interval
  
              // Skip if time hasn't advanced
              if (currentTime <= lastTimeMinutes && !(currentTime === 0 && j === 0)) {
@@ -439,8 +435,6 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
         const intensityInchesPerHour = stepDurationHours > 0 ? depthStepInches / stepDurationHours : 0;
 
         // Determine units for output
-        const finalIntensityUnit = isMetric ? 'mm/hr' : 'in/hr';
-        const finalDepthUnit = isMetric ? 'mm' : 'in';
         const conversionFactor = isMetric ? INCH_TO_MM : 1;
 
         const finalIntensity = intensityInchesPerHour * conversionFactor;
@@ -482,16 +476,14 @@ export function calculateHyetograph(inputs: CalculationInputs): CalculationResul
 
 
     const finalCalculatedTotalDepth = calculatedTotalDepthInches * (isMetric ? INCH_TO_MM : 1);
-    const finalIntensityUnitLabel = isMetric ? 'mm/hr' : 'in/hr';
-    const finalDepthUnitLabel = isMetric ? 'mm' : 'in';
 
     return {
         labels: plotLabels,
         intensityData: finalIntensities,
         peakIntensity: peakIntensity,
         totalDepthActual: finalCalculatedTotalDepth,
-        intensityUnit: finalIntensityUnitLabel,
-        depthUnit: finalDepthUnitLabel,
+        intensityUnit: isMetric ? 'mm/hr' : 'in/hr',
+        depthUnit: isMetric ? 'mm' : 'in',
         detailedData: stormDataStore
     };
 }
