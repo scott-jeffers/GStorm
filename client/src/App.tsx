@@ -40,20 +40,18 @@ function App() {
     console.log(`Input changed: Field=${field}, Value=${value}, Type=${typeof value}`);
 
     setInputs((prev) => {
-        // Process the input value (e.g., parse numbers)
+        // Process the input value
         let processedValue: string | number = value;
 
-        // Ensure numeric fields that should be numbers are treated as such
-        // Convert 'totalDepth' and 'timeStep' strings to numbers if they are numeric strings
-        if ((field === 'totalDepth' || field === 'timeStep') && typeof value === 'string') {
-             const num = parseFloat(value);
-             // Keep as string if not a valid number, let validation handle it later
-             processedValue = isNaN(num) ? value : num;
-             console.log(`Processed ${field} from string '${value}' to ${typeof processedValue}: ${processedValue}`);
+        // Keep totalDepth and timeStep as strings received from the input
+        // Conversion to number will happen during calculation/validation
+        if (field === 'totalDepth' || field === 'timeStep') {
+            processedValue = String(value); // Ensure it's always a string for the input field
+            console.log(`Kept ${field} as string: ${processedValue}`);
         }
 
         // Special handling for duration - ensure it's one of the allowed numbers
-        if (field === 'duration') {
+        else if (field === 'duration') {
             const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
             if (typeof numValue === 'number' && [6, 12, 24].includes(numValue)) {
                 processedValue = numValue as 6 | 12 | 24; // Assign the specific numeric literal type
@@ -64,24 +62,14 @@ function App() {
                  return prev;
              }
          }
+         // For other fields (like stormType, depthUnits), ensure they are strings if needed
+         else if (field === 'stormType' || field === 'depthUnits') {
+             processedValue = String(value);
+         }
 
-        // Basic type validation before setting state (Example for fields expected to be numbers)
-        if (field === 'totalDepth' && typeof processedValue !== 'number' && typeof processedValue !== 'string') { // Allow string for input binding
-             console.error(`Error processing input for ${field}: Expected number or string but got ${typeof processedValue}`);
-             return prev; // Prevent updating state with wrong type
-        }
-        // The original check for duration is now handled above more specifically
-        // if (field === 'duration' && typeof processedValue !== 'number') {
-        //      console.error(`Error processing input for ${field}: Expected number but got ${typeof processedValue}`);
-        //      return prev; // Prevent updating state with wrong type
-        // }
-        if (field === 'timeStep' && typeof processedValue !== 'number' && typeof processedValue !== 'string') { // Allow string for input binding
-            console.error(`Error processing input for ${field}: Expected number or string but got ${typeof processedValue}`);
-            return prev;
-        }
-
-        // For other fields like stormType, just assign the value (assuming string)
-        // Add more specific checks if needed
+         // Removed the redundant type validation checks here, as we now store
+         // totalDepth and timeStep as strings directly.
+         // Validation occurs in triggerCalculation.
 
         return {
             ...prev,
