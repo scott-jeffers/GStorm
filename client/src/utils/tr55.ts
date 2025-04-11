@@ -20,19 +20,22 @@ function parseDesignStormsCsv(csvString: string): Tr55Distributions {
     }
 
     const header = lines[0].trim().split(',').map(h => h.trim());
-    const timeIndex = header.findIndex(h => h.toLowerCase() === 'minutes');
+    // Assume time is always the FIRST column (index 0)
+    const timeIndex = 0; 
     const stormTypeIndices: { [key: string]: number } = {};
     const stormTypes: string[] = [];
 
     header.forEach((h, index) => {
-        if (index > timeIndex && h) { // Assumes storm types are after the time column and not empty
+        // Storm types start from index 1 onwards
+        if (index > timeIndex && h && !h.toLowerCase().startsWith('minutes')) { 
             stormTypeIndices[h] = index;
             stormTypes.push(h);
         }
     });
 
-    if (timeIndex === -1 || stormTypes.length === 0) {
-        console.error("CSV header is missing 'Minutes' column or storm type columns.");
+    // Keep the check for storm types, but remove the timeIndex check
+    if (stormTypes.length === 0) {
+        console.error("CSV header is missing storm type columns.");
         return {};
     }
 
