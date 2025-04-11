@@ -23,11 +23,10 @@ export interface CalculationResult {
 // Represents the input parameters gathered from the form
 export interface StormInputParameters {
     totalDepth: number | string; // Allow string for input field binding
-    duration: number | string;
+    duration: 6 | 12 | 24; // Restrict duration to specific hour values
     stormType: string; // e.g., 'Type II'
     timeStep: number | string;
     depthUnits: 'us' | 'metric';
-    durationUnits: 'hours' | 'minutes';
 }
 
 // Represents the structure of parsed NOAA PFDS data for the table

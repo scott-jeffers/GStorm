@@ -11,13 +11,12 @@ import L from 'leaflet'; // Import Leaflet library for LatLng type
 import { parseNoaaCsv } from './utils/noaaParser'; // Import the parser
 
 // Default input values
-const defaultInputs: StormInputParameters = {
+const defaultInputs: Omit<StormInputParameters, 'durationUnits'> = {
   totalDepth: '1.0',
   duration: 24,
   stormType: 'Type II',
   timeStep: '6',
   depthUnits: 'us',
-  durationUnits: 'hours',
 };
 
 // Initial state for NOAA data
@@ -37,30 +36,70 @@ function App() {
 
   // Handler for input changes
   const handleInputChange = (field: keyof StormInputParameters, value: string | number) => {
-      setInputs((prev: StormInputParameters): StormInputParameters => ({
-          ...prev,
-          [field]: value
-      }));
-      // Maybe clear results on input change? Or recalculate automatically?
-      // For now, recalculation happens on submit.
+    setInputs((prev) => {
+        let processedValue: string | number | (6 | 12 | 24) = value;
+
+        // Handle string/number based on field
+        if (field === 'duration') {
+            const valueStr = typeof value === 'string' ? value : value.toString();
+            const numValue = parseInt(valueStr, 10);
+            if ([6, 12, 24].includes(numValue)) {
+                processedValue = numValue as 6 | 12 | 24;
+            } else {
+                console.warn(`Invalid duration value received: ${value}. Ignoring change.`);
+                return prev;
+            }
+        } else if (field === 'timeStep') {
+            // Ensure timeStep is always a string
+            processedValue = typeof value === 'string' ? value : value.toString();
+        } else if (field === 'totalDepth') {
+             // Ensure totalDepth is always a string
+            processedValue = typeof value === 'string' ? value : value.toString();
+        } else if (field === 'stormType') {
+            // stormType comes from a select, should be string. Use toString() for safety.
+             processedValue = value.toString();
+         } else if (field === 'depthUnits'){
+             // depthUnits comes from radio buttons, should be string. Use toString() for safety.
+             processedValue = value.toString();
+         }
+         // No need for else, other fields (like durationUnits which is removed) aren't handled
+
+        // Ensure type consistency before updating state
+        if ((field === 'timeStep' || field === 'totalDepth' || field === 'stormType' || field === 'depthUnits') && typeof processedValue !== 'string') {
+             console.error(`Error processing input for ${field}: Expected string but got ${typeof processedValue}`);
+             return prev; // Prevent updating state with wrong type
+        }
+        if (field === 'duration' && typeof processedValue !== 'number') {
+             console.error(`Error processing input for ${field}: Expected number but got ${typeof processedValue}`);
+             return prev; // Prevent updating state with wrong type
+        }
+
+        return {
+            ...prev,
+            [field]: processedValue
+        };
+    });
   };
 
   // Handler for unit radio button changes - only handles depth now
   const handleUnitChange = (unitType: 'depth', value: 'us' | 'metric') => {
       if (unitType === 'depth') {
-          setInputs((prev: StormInputParameters): StormInputParameters => ({ ...prev, depthUnits: value as 'us' | 'metric' }));
-      } 
-      triggerCalculation(inputs); 
+          // Type assertion needed because StormInputParameters no longer strictly matches the function signature
+          setInputs((prev) => ({ ...prev, depthUnits: value as 'us' | 'metric' }));
+      }
+      // Removed triggerCalculation here - let it happen on submit or NOAA select
+      // triggerCalculation(inputs);
   };
 
   // Function to validate inputs and trigger calculation
   const triggerCalculation = useCallback((currentInputs: StormInputParameters) => {
        // Validate and convert inputs to numbers
-       const depthNum = parseFloat(String(currentInputs.totalDepth));
-       const timeStepNum = parseInt(String(currentInputs.timeStep), 10);
+       const depthNum = parseFloat(currentInputs.totalDepth); // Already string
+       // currentInputs.duration is already 6 | 12 | 24
+       const timeStepNum = parseInt(currentInputs.timeStep, 10); // Already string
 
        if (isNaN(depthNum) || depthNum <= 0 ||
-           ![6, 12, 24].includes(currentInputs.duration) || 
+           ![6, 12, 24].includes(currentInputs.duration) ||
            isNaN(timeStepNum) || timeStepNum <= 0) {
            console.error("Invalid input values for calculation.");
            alert("Please ensure all inputs (Depth, Time Step) are valid positive numbers and Duration is 6, 12, or 24.");
@@ -74,7 +113,7 @@ function App() {
            stormType: currentInputs.stormType,
            timeStepMinutes: timeStepNum,
            depthUnit: currentInputs.depthUnits,
-           durationUnit: currentInputs.durationUnits,
+           durationUnit: 'hours', // Hardcode hours
        };
 
        try {
@@ -85,7 +124,7 @@ function App() {
             alert("An error occurred during calculation. Please check inputs and try again.");
             setCalculationResult(null); // Clear results on error
        }
-  }, []); // Empty dependency array, relies on passed-in inputs
+  }, []);
 
   // Handler for form submission
   const handleSubmit = () => {
@@ -173,7 +212,7 @@ function App() {
       fetchNoaaData(latlng.lat, latlng.lng);
   }, [fetchNoaaData]); // Depend on the memoized fetch function
 
-  // --- Apply NOAA Data to Inputs (Placeholder) ---
+  // --- Apply NOAA Data to Inputs ---
   const applyNoaaDataToInputs = useCallback((depth: number, durationValue: number) => {
         console.log(`Applying NOAA data: Depth=${depth}, Duration=${durationValue} hours`);
 
@@ -184,26 +223,22 @@ function App() {
             return;
         }
 
-        // Create the updated inputs object
-        const updatedInputs: StormInputParameters = {
-            ...inputs, // Keep other inputs like stormType and timeStep
-            totalDepth: depth.toFixed(3), // Update depth
-            duration: durationValue as 6 | 12 | 24, // Update duration value, assert type
-            depthUnits: 'us',              // Set depth units to US
-            durationUnits: 'hours',        // Fixed to hours
+        // Create the updated inputs object - use Omit as durationUnits is gone
+        const updatedInputs: Omit<StormInputParameters, 'durationUnits'> = {
+            ...inputs,
+            totalDepth: depth.toFixed(3),
+            duration: durationValue as 6 | 12 | 24,
+            depthUnits: 'us',
+            // REMOVED durationUnits
         };
 
-        setInputs(updatedInputs);
+        // Need type assertion here because setInputs expects StormInputParameters which includes durationUnits
+        setInputs(updatedInputs as StormInputParameters);
 
         // Trigger calculation with the *new* inputs state
-        triggerCalculation(updatedInputs); // Pass the newly set state
+        triggerCalculation(updatedInputs as StormInputParameters); // Assert type here too
 
-        alert(`Inputs updated: ${depth.toFixed(3)} inches, ${durationValue} hours. Storm recalculated.`);
-
-        // Optional: Scroll to input form
-        // document.getElementById('input-section')?.scrollIntoView({ behavior: 'smooth' });
-
-    }, [inputs, triggerCalculation]); // Depend on inputs and triggerCalculation
+  }, [inputs, triggerCalculation]); // Add dependencies
 
 
   console.log('App render. Inputs:', inputs, 'Result:', calculationResult, 'NOAA:', noaaState);

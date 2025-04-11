@@ -2,21 +2,26 @@ import React from 'react';
 import { StormInputParameters } from '../types'; // Import the type
 
 interface InputFormProps {
-  inputs: StormInputParameters;
-  onInputChange: (field: keyof StormInputParameters, value: string | number) => void;
-  onUnitChange: (unitType: 'depth' | 'duration', value: 'us' | 'metric' | 'hours' | 'minutes') => void;
-  onSubmit: () => void; // Function to trigger calculation
+  inputs: Omit<StormInputParameters, 'durationUnits'>; // Use Omit as durationUnits is gone
+  onInputChange: (field: keyof Omit<StormInputParameters, 'durationUnits'>, value: string | number | 6 | 12 | 24) => void;
+  onUnitChange: (unitType: 'depth', value: 'us' | 'metric') => void;
+  onSubmit: () => void;
 }
 
 const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChange, onSubmit }) => {
 
-    const handleNumericChange = (field: 'totalDepth' | 'duration' | 'timeStep', value: string) => {
-        // Allow empty string or positive numbers (including decimals)
+    const handleNumericChange = (field: 'totalDepth' | 'timeStep', value: string) => {
         if (value === '' || /^[+]?([0-9]*[.])?[0-9]+$/.test(value) || /^[+]?[0-9]+\.?$/.test(value) ) {
              onInputChange(field, value);
-        } else if (/^\d*$/.test(value)) { // Allow just digits during typing
+        } else if (/^\d*$/.test(value)) {
              onInputChange(field, value);
         }
+    };
+
+    // Specific handler for the duration dropdown
+    const handleDurationChange = (value: string) => {
+        const durationValue = parseInt(value, 10) as 6 | 12 | 24;
+        onInputChange('duration', durationValue);
     };
 
   return (
@@ -64,46 +69,23 @@ const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChan
           </div>
         </div>
 
-        {/* Duration */}
+        {/* Duration Dropdown */}
         <div>
           <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-            Duration ({inputs.durationUnits})
+            Duration (hours)
           </label>
-          <input
-            type="text"
-            inputMode="decimal"
+          <select
             id="duration"
             name="duration"
-            value={inputs.duration}
-            onChange={(e) => handleNumericChange('duration', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            value={inputs.duration} // Value is now 6, 12, or 24
+            onChange={(e) => handleDurationChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
-            min="0" // Technically > 0, handled in calculation
-          />
-           <div className="mt-2 flex items-center space-x-4">
-            <label className="flex items-center text-sm text-gray-600">
-              <input
-                type="radio"
-                name="durationUnits"
-                value="hours"
-                checked={inputs.durationUnits === 'hours'}
-                onChange={() => onUnitChange('duration', 'hours')}
-                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
-              />
-              <span className="ml-2">Hours</span>
-            </label>
-            <label className="flex items-center text-sm text-gray-600">
-              <input
-                type="radio"
-                name="durationUnits"
-                value="minutes"
-                checked={inputs.durationUnits === 'minutes'}
-                onChange={() => onUnitChange('duration', 'minutes')}
-                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
-              />
-              <span className="ml-2">Minutes</span>
-            </label>
-          </div>
+          >
+            <option value={6}>6 hours</option>
+            <option value={12}>12 hours</option>
+            <option value={24}>24 hours</option>
+          </select>
         </div>
 
         {/* Design Storm Type */}
