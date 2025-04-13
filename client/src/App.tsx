@@ -11,10 +11,11 @@ import L from 'leaflet'; // Import Leaflet library for LatLng type
 import { parseNoaaCsv } from './utils/noaaParser'; // Import the parser
 
 // Default input values
-const defaultInputs: Omit<StormInputParameters, 'durationUnits'> = {
+const defaultInputs: StormInputParameters = {
   totalDepth: '1.0',
   duration: 24,
-  stormType: 'Type II',
+  stormCategory: 'SCS', // Default category
+  stormSubType: 'Type II', // Default sub-type for SCS
   timeStep: '6',
   depthUnits: 'us',
 };
@@ -35,47 +36,95 @@ function App() {
   const [noaaState, setNoaaState] = useState<NoaaState>(initialNoaaState); // Add NOAA state
 
   // Handler for input changes
-  const handleInputChange = (field: keyof Omit<StormInputParameters, 'durationUnits'>, value: string | number) => {
+  const handleInputChange = (field: keyof StormInputParameters, value: string | number | (6 | 12 | 24)) => {
     // Log the raw input change
     console.log(`Input changed: Field=${field}, Value=${value}, Type=${typeof value}`);
 
     setInputs((prev) => {
-        // Process the input value
-        let processedValue: string | number = value;
+        // Store the previous category to detect changes
+        const prevCategory = prev.stormCategory;
+        let processedValue: string | number | (6 | 12 | 24) | 'SCS' | 'NRCS' | 'Huff' = value;
+        let newState = { ...prev }; // Start with a copy of the previous state
 
-        // Keep totalDepth and timeStep as strings received from the input
-        // Conversion to number will happen during calculation/validation
-        if (field === 'totalDepth' || field === 'timeStep') {
-            processedValue = String(value); // Ensure it's always a string for the input field
-            console.log(`Kept ${field} as string: ${processedValue}`);
+        // Handle category change first, as it affects other fields
+        if (field === 'stormCategory') {
+            const newCategory = value as 'SCS' | 'NRCS' | 'Huff';
+            processedValue = newCategory;
+            newState.stormCategory = newCategory;
+
+            // Reset sub-type and duration based on new category
+            if (newCategory !== prevCategory) {
+                if (newCategory === 'SCS') {
+                    newState.stormSubType = 'Type II'; // Default SCS sub-type
+                    // Duration remains user-selectable
+                } else { // NRCS or Huff
+                    newState.duration = 24; // Force duration to 24hr
+                    newState.stormSubType = newCategory === 'NRCS' ? 'Northeast Type A' : 'Huff Type I';
+                    // Reset timeStep if current value is invalid for NRCS/Huff
+                    if (!['1', '6'].includes(String(newState.timeStep))) {
+                         console.log(`Resetting timeStep to 6 for ${newCategory} category.`);
+                         newState.timeStep = '6';
+                    }
+                }
+            }
         }
-
-        // Special handling for duration - ensure it's one of the allowed numbers
-        else if (field === 'duration') {
+        // Keep totalDepth as string
+        else if (field === 'totalDepth') {
+             processedValue = String(value);
+             console.log(`Kept ${field} as string: ${processedValue}`);
+        }
+        // Handle timeStep changes, enforcing NRCS/Huff restrictions
+        else if (field === 'timeStep') {
+            const timeStepValue = String(value);
+            // Allow any positive integer for SCS
+            if (newState.stormCategory === 'SCS') {
+                // Basic validation for positive integers (allow empty string during typing)
+                if (timeStepValue === '' || /^[1-9][0-9]*$/.test(timeStepValue)) {
+                    processedValue = timeStepValue;
+                    console.log(`Kept ${field} as string: ${processedValue}`);
+                } else {
+                    // Don't update if invalid for SCS (e.g., non-digit, zero)
+                    console.warn(`Invalid timeStep value for SCS: ${timeStepValue}. Reverting.`);
+                    return prev;
+                }
+            } else { // NRCS or Huff
+                // Only allow '1' or '6'
+                if (timeStepValue === '1' || timeStepValue === '6' || timeStepValue === '') {
+                    processedValue = timeStepValue;
+                    console.log(`Kept ${field} as string: ${processedValue}`);
+                } else {
+                    // Don't update if invalid for NRCS/Huff
+                    console.warn(`Invalid timeStep value for NRCS/Huff (must be 1 or 6): ${timeStepValue}. Reverting.`);
+                    return prev;
+                }
+            }
+        }
+        // Special handling for duration (only applies if SCS)
+        else if (field === 'duration' && newState.stormCategory === 'SCS') {
             const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
             if (typeof numValue === 'number' && [6, 12, 24].includes(numValue)) {
-                processedValue = numValue as 6 | 12 | 24; // Assign the specific numeric literal type
+                processedValue = numValue as 6 | 12 | 24;
                 console.log(`Processed duration to number: ${processedValue}`);
             } else {
                 console.error(`Error processing input for ${field}: Expected 6, 12, or 24 but got ${value}`);
-                // Return previous state ONLY if the current value is invalid for duration
-                 return prev;
-             }
+                return prev; // Revert if duration is invalid for SCS
+            }
+        }
+         // Handle subType changes
+         else if (field === 'stormSubType') {
+             processedValue = String(value);
          }
-         // For other fields (like stormType, depthUnits), ensure they are strings if needed
-         else if (field === 'stormType' || field === 'depthUnits') {
+         // For depthUnits, ensure it's a string
+         else if (field === 'depthUnits') {
              processedValue = String(value);
          }
 
-         // Removed the redundant type validation checks here, as we now store
-         // totalDepth and timeStep as strings directly.
-         // Validation occurs in triggerCalculation.
+        // Update the specific field that triggered the change
+        // Use type assertion carefully here
+        (newState as any)[field] = processedValue;
 
-        return {
-            ...prev,
-            // Use Omit<> keys type safety
-            [field]: processedValue as StormInputParameters[keyof Omit<StormInputParameters, 'durationUnits'>]
-        };
+        // Return the potentially modified state
+        return newState;
     });
   };
 
@@ -98,22 +147,37 @@ function App() {
        // Explicitly convert to string before parsing
        const timeStepNum = parseInt(String(currentInputs.timeStep), 10);
 
+       // Duration check needs to consider category
+       const isValidDuration = currentInputs.stormCategory === 'SCS'
+           ? [6, 12, 24].includes(currentInputs.duration)
+           : currentInputs.duration === 24;
+
+       // Time step validation
+       const timeStepStr = String(currentInputs.timeStep);
+       const isValidTimeStep =
+           isNaN(timeStepNum) || timeStepNum <= 0 ? false :
+           currentInputs.stormCategory === 'SCS' ? true : // Any positive integer is fine for SCS (already parsed)
+           ['1', '6'].includes(timeStepStr); // Must be exactly '1' or '6' for NRCS/Huff
+
        if (isNaN(depthNum) || depthNum <= 0 ||
-           ![6, 12, 24].includes(currentInputs.duration) ||
-           isNaN(timeStepNum) || timeStepNum <= 0) {
-           console.error("Invalid input values for calculation.");
-           alert("Please ensure all inputs (Depth, Time Step) are valid positive numbers and Duration is 6, 12, or 24.");
+           !isValidDuration ||
+           !isValidTimeStep) { // Use the new time step validation
+           console.error("Invalid input values for calculation.", currentInputs);
+           // Update alert message
+           alert(`Please ensure all inputs are valid. Depth must be positive. Duration must be 6, 12, or 24 for SCS storms (fixed at 24 for NRCS/Huff). Time Step must be a positive integer (only 1 or 6 allowed for NRCS/Huff).`);
            setCalculationResult(null); // Clear previous results on invalid input
            return;
        }
 
        const calculationParams: CalculationInputs = {
            totalDepthInput: depthNum,
-           durationInput: currentInputs.duration,
-           stormType: currentInputs.stormType,
+           durationInput: currentInputs.duration, // Pass the actual duration
+           // Pass category and sub-type
+           stormCategory: currentInputs.stormCategory,
+           stormSubType: currentInputs.stormSubType,
            timeStepMinutes: timeStepNum,
            depthUnit: currentInputs.depthUnits,
-           durationUnit: 'hours', // Hardcode hours
+           durationUnit: 'hours',
        };
 
        try {
@@ -216,27 +280,30 @@ function App() {
   const applyNoaaDataToInputs = useCallback((depth: number, durationValue: number) => {
         console.log(`Applying NOAA data: Depth=${depth}, Duration=${durationValue} hours`);
 
-        // Validate durationValue is one of the allowed values
+        // Validate durationValue
         if (![6, 12, 24].includes(durationValue)) {
             console.error(`Invalid duration (${durationValue}) passed from NOAA table. Expected 6, 12, or 24.`);
             alert(`Error applying NOAA data: Invalid duration (${durationValue} hours)`);
             return;
         }
 
-        // Create the updated inputs object - use Omit as durationUnits is gone
-        const updatedInputs: Omit<StormInputParameters, 'durationUnits'> = {
+        // Create the updated inputs object
+        const updatedInputs: StormInputParameters = {
             ...inputs,
             totalDepth: depth.toFixed(3),
             duration: durationValue as 6 | 12 | 24,
             depthUnits: 'us',
-            // REMOVED durationUnits
+            // When applying NOAA data, default to SCS Type II? Or keep current category/subtype?
+            // For now, let's keep the current category/subtype but force duration.
+            // If the current category is NRCS/Huff, this duration might not be valid later,
+            // but triggerCalculation should handle that. Alternatively, we could force category to SCS here.
+            // Let's force to SCS for simplicity when applying NOAA data.
+            stormCategory: 'SCS',
+            stormSubType: 'Type II',
         };
 
-        // Need type assertion here because setInputs expects StormInputParameters which includes durationUnits
-        setInputs(updatedInputs as StormInputParameters);
-
-        // Trigger calculation with the *new* inputs state
-        triggerCalculation(updatedInputs as StormInputParameters); // Assert type here too
+        setInputs(updatedInputs);
+        triggerCalculation(updatedInputs);
 
   }, [inputs, triggerCalculation]); // Add dependencies
 

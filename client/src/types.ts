@@ -24,7 +24,8 @@ export interface CalculationResult {
 export interface StormInputParameters {
     totalDepth: number | string; // Allow string for input field binding
     duration: 6 | 12 | 24; // Restrict duration to specific hour values
-    stormType: string; // e.g., 'Type II'
+    stormCategory: 'SCS' | 'NRCS' | 'Huff'; // Main category
+    stormSubType: string; // Specific type within the category (e.g., 'Type II', 'Northeast Type A', 'Huff Type I')
     timeStep: number | string;
     depthUnits: 'us' | 'metric';
 }

@@ -1,9 +1,13 @@
 import React from 'react';
 import { StormInputParameters } from '../types'; // Import the type
+// Import the available sub-types exported from tr55.ts
+import { stormSubTypesByCategory } from '../utils/tr55';
 
 interface InputFormProps {
-  inputs: Omit<StormInputParameters, 'durationUnits'>; // Use Omit as durationUnits is gone
-  onInputChange: (field: keyof Omit<StormInputParameters, 'durationUnits'>, value: string | number | 6 | 12 | 24) => void;
+  // Use the full StormInputParameters type
+  inputs: StormInputParameters;
+  // Update the callback signature
+  onInputChange: (field: keyof StormInputParameters, value: string | number | 6 | 12 | 24) => void;
   onUnitChange: (unitType: 'depth', value: 'us' | 'metric') => void;
   onSubmit: () => void;
 }
@@ -11,18 +15,23 @@ interface InputFormProps {
 const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChange, onSubmit }) => {
 
     const handleNumericChange = (field: 'totalDepth' | 'timeStep', value: string) => {
-        if (value === '' || /^[+]?([0-9]*[.])?[0-9]+$/.test(value) || /^[+]?[0-9]+\.?$/.test(value) ) {
-             onInputChange(field, value);
-        } else if (/^\d*$/.test(value)) {
-             onInputChange(field, value);
+        // Allow empty string, positive numbers, and partial decimals like "1."
+        if (value === '' || /^[+]?([0-9]*[.])?[0-9]*$/.test(value)) {
+            onInputChange(field, value);
         }
     };
 
-    // Specific handler for the duration dropdown
+    // Duration change handler (Only applicable for SCS)
     const handleDurationChange = (value: string) => {
         const durationValue = parseInt(value, 10) as 6 | 12 | 24;
-        onInputChange('duration', durationValue);
+        if (inputs.stormCategory === 'SCS') {
+            onInputChange('duration', durationValue);
+        }
     };
+
+    // Get the list of sub-types for the currently selected category
+    const currentSubTypes = stormSubTypesByCategory[inputs.stormCategory] || [];
+    const isSCS = inputs.stormCategory === 'SCS';
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4">
@@ -69,9 +78,46 @@ const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChan
           </div>
         </div>
 
-        {/* Duration Dropdown */}
+        {/* Storm Category Dropdown */}
         <div>
-          <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="storm-category" className="block text-sm font-medium text-gray-700 mb-1">
+            Storm Distribution Category
+          </label>
+          <select
+            id="storm-category"
+            name="stormCategory"
+            value={inputs.stormCategory}
+            onChange={(e) => onInputChange('stormCategory', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          >
+            <option value="SCS">SCS (TR-55)</option>
+            <option value="NRCS">NRCS (Regional)</option>
+            <option value="Huff">Huff (Regional)</option>
+          </select>
+        </div>
+
+        {/* Storm Sub-Type Dropdown (Dynamic) */}
+        <div>
+          <label htmlFor="storm-subtype" className="block text-sm font-medium text-gray-700 mb-1">
+            Storm Sub-Type
+          </label>
+          <select
+            id="storm-subtype"
+            name="stormSubType"
+            value={inputs.stormSubType} // Ensure this value exists in currentSubTypes
+            onChange={(e) => onInputChange('stormSubType', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            disabled={currentSubTypes.length === 0} // Disable if no sub-types available
+          >
+            {currentSubTypes.map(subType => (
+              <option key={subType} value={subType}>{subType}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Duration Dropdown (Conditional) */}
+        <div>
+          <label htmlFor="duration" className={`block text-sm font-medium mb-1 ${isSCS ? 'text-gray-700' : 'text-gray-400'}`}>
             Duration (hours)
           </label>
           <select
@@ -79,32 +125,17 @@ const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChan
             name="duration"
             value={inputs.duration} // Value is now 6, 12, or 24
             onChange={(e) => handleDurationChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className={`w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${!isSCS ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             required
+            disabled={!isSCS} // Disable if not SCS
           >
             <option value={6}>6 hours</option>
             <option value={12}>12 hours</option>
             <option value={24}>24 hours</option>
           </select>
-        </div>
-
-        {/* Design Storm Type */}
-        <div>
-          <label htmlFor="storm-type" className="block text-sm font-medium text-gray-700 mb-1">
-            Design Storm Type
-          </label>
-          <select
-            id="storm-type"
-            name="stormType"
-            value={inputs.stormType}
-            onChange={(e) => onInputChange('stormType', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="Type I">Type I</option>
-            <option value="Type Ia">Type Ia</option>
-            <option value="Type II">Type II</option>
-            <option value="Type III">Type III</option>
-          </select>
+          {!isSCS && (
+              <p className="mt-1 text-xs text-gray-500 italic">Duration fixed at 24 hours for NRCS/Huff storms.</p>
+          )}
         </div>
 
         {/* Time Step */}
@@ -114,15 +145,18 @@ const InputForm: React.FC<InputFormProps> = ({ inputs, onInputChange, onUnitChan
           </label>
           <input
             type="text"
-            inputMode="numeric" // Use numeric for integer steps
+            inputMode="numeric"
             id="time-step"
             name="timeStep"
             value={inputs.timeStep}
-            onChange={(e) => handleNumericChange('timeStep', e.target.value.replace(/[^0-9]/g, ''))} // Allow only digits
+            onChange={(e) => onInputChange('timeStep', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
-             min="1"
+            min="1"
           />
+          {inputs.stormCategory !== 'SCS' && (
+               <p className="mt-1 text-xs text-gray-500 italic">Time step must be 1 or 6 minutes for NRCS/Huff storms.</p>
+          )}
         </div>
       </div>
 

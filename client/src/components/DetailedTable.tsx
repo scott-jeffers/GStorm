@@ -18,14 +18,15 @@ function formatTableTime(timeMinutes: number, totalDurationMinutes: number): str
 }
 
 // Helper function to generate SWMM .dat content (Simple H:MM format)
-const generateSwmmDatContent = (result: CalculationResult, inputs: Omit<StormInputParameters, 'durationUnits'>): string => {
+const generateSwmmDatContent = (result: CalculationResult, inputs: StormInputParameters): string => {
     const timeStepMinutes = inputs.timeStep ? parseFloat(String(inputs.timeStep)) : 6; // Default to 6 mins
     const totalDurationMinutes = result.intensityData.length * timeStepMinutes;
 
     // Header comment similar to example
     const depthUnit = inputs.depthUnits === 'us' ? 'in' : 'mm';
-    // Use hardcoded 'hr' as duration unit is always hours now
-    let datContent = `;${inputs.stormType} ${inputs.duration}hr ${inputs.totalDepth}-${depthUnit} GStorm Hyetograph\\n`;
+    // Use category, subType, and duration for header
+    const safeSubType = String(inputs.stormSubType).replace(/\s+/g, '_'); // Replace spaces
+    let datContent = `;${inputs.stormCategory}_${safeSubType} ${inputs.duration}hr ${inputs.totalDepth}${depthUnit} GStorm Hyetograph\\n`;
 
     let currentTotalMinutes = 0;
 
@@ -128,14 +129,14 @@ const DetailedTable: React.FC<DetailedTableProps> = ({ calculationResult, stormI
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
 
-        // Generate filename
-        const stormType = stormInputs.stormType.replace(' ', '');
-        const durationValue = String(stormInputs.duration).replace('.', '-');
-        // Assume duration unit is always 'hr' now
-        const durationUnitString = 'hr';
-        const depthValue = String(stormInputs.totalDepth).replace('.', '-');
+        // Generate filename using category and subType
+        const safeCategory = String(stormInputs.stormCategory);
+        const safeSubType = String(stormInputs.stormSubType).replace(/\s+/g, '_'); // Replace spaces
+        const durationValue = String(stormInputs.duration);
+        const durationUnitString = 'hr'; // Duration is always hours
+        const depthValue = String(stormInputs.totalDepth).replace(/\./g, '-'); // Replace periods
         const depthUnitString = stormInputs.depthUnits === 'us' ? 'in' : 'mm';
-        const filename = `gstorm_hyetograph_${stormType}_${durationValue}${durationUnitString}_${depthValue}${depthUnitString}.csv`;
+        const filename = `gstorm_hyetograph_${safeCategory}_${safeSubType}_${durationValue}${durationUnitString}_${depthValue}${depthUnitString}.csv`;
 
         link.setAttribute("download", filename);
         document.body.appendChild(link); // Required for Firefox
@@ -144,14 +145,16 @@ const DetailedTable: React.FC<DetailedTableProps> = ({ calculationResult, stormI
     };
 
     const handleDownloadDat = () => {
-        // Pass only the necessary parts of stormInputs, excluding durationUnits
+        // Pass the full stormInputs object now
         const datString = generateSwmmDatContent(calculationResult, stormInputs);
         const blob = new Blob([datString], { type: 'text/plain;charset=utf-8' });
 
-        // Generate filename
+        // Generate filename using category and subType
+        const safeCategory = String(stormInputs.stormCategory);
+        const safeSubType = String(stormInputs.stormSubType).replace(/\s+/g, '_'); // Replace spaces
         const depthUnit = stormInputs.depthUnits === 'us' ? 'in' : 'mm';
         // Use hardcoded 'hr' as duration unit is always hours now
-        const filename = `GStorm_Hyetograph_${stormInputs.stormType}_${stormInputs.totalDepth}${depthUnit}_${stormInputs.duration}hr.dat`;
+        const filename = `GStorm_Hyetograph_${safeCategory}_${safeSubType}_${stormInputs.totalDepth}${depthUnit}_${stormInputs.duration}hr.dat`;
 
         // Create a link and trigger download
         const link = document.createElement('a');
