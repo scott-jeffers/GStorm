@@ -214,8 +214,6 @@ function parseAndProcessStormCsv(
         }
 
         let totalDepthInches = 0;
-        let lastTimeMinutes = 0;
-        // Start with the mandatory (0, 0) point
         const final_times: number[] = [0];
         const final_cumulative_depths: number[] = [0];
 
@@ -357,7 +355,6 @@ function preprocessDistributions(sourceDistributions: UnifiedDistributions): Uni
         }
 
         // 2. Ensure End Point (totalDurationMinutes, 1.0)
-        const lastIdx = time_minutes.length - 1;
         const expectedEndTime = totalDurationMinutes;
 
         // Remove points strictly *after* the expected end time
@@ -651,27 +648,4 @@ function formatTimeLabel(timeMinutes: number, totalDurationMinutes: number): str
          // Add tolerance before rounding
          return `${Math.round(timeMinutes + tolerance)}m`;
      }
-}
-
-function formatTableTime(timeMinutes: number, totalDurationMinutes: number): string {
-    const tolerance = 1e-6; // Small tolerance for floating point comparisons
-    if (totalDurationMinutes > 120 + tolerance) { // Use H:MM for durations > 2 hours
-        let hours = Math.floor(timeMinutes / 60);
-        // Round the remainder minutes *after* the modulo
-        let mins = Math.round((timeMinutes % 60) + tolerance);
-
-        // Handle case where rounding mins results in 60
-        if (mins >= 60) {
-            hours += 1;
-            mins = 0;
-        }
-
-        // Correct for potential negative zero after rounding
-         if (Object.is(mins, -0)) mins = 0;
-
-        return `${hours}:${mins.toString().padStart(2, '0')}`;
-    } else { // Use minutes (rounded)
-         // Add tolerance before rounding
-        return String(Math.round(timeMinutes + tolerance));
-    }
 } 
